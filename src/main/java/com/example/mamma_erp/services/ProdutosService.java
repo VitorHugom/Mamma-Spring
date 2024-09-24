@@ -4,6 +4,8 @@ import com.example.mamma_erp.entities.produtos.Produtos;
 import com.example.mamma_erp.entities.produtos.ProdutosRepository;
 import com.example.mamma_erp.entities.produtos.ProdutosRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -62,5 +64,15 @@ public class ProdutosService {
             return true;
         }
         return false;
+    }
+
+    // Método de busca por nome (lazy load)
+    public Page<Produtos> findByNomeContainingIgnoreCase(String nome, Pageable pageable) {
+        return produtosRepository.findByDescricaoContainingIgnoreCase(nome, pageable);
+    }
+
+    // Listar todos com paginação
+    public Page<Produtos> listarTodosPaginado(Pageable pageable) {
+        return produtosRepository.findAll(pageable);
     }
 }

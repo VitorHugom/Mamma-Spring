@@ -5,6 +5,10 @@ import com.example.mamma_erp.entities.produtos.ProdutosRequestDTO;
 import com.example.mamma_erp.entities.produtos.ProdutosResponseDTO;
 import com.example.mamma_erp.services.ProdutosService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -51,5 +55,29 @@ public class ProdutoController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<ProdutosResponseDTO>> getProdutosByName(
+            @RequestParam(required = false) String nome,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("descricao").ascending());
+        Page<Produtos> produtosPage;
+
+        if (nome != null && !nome.isEmpty()) {
+            produtosPage = produtosService.findByNomeContainingIgnoreCase(nome, pageable);
+        } else {
+            produtosPage = produtosService.listarTodosPaginado(pageable);
+        }
+
+        List<ProdutosResponseDTO> produtosDTO = produtosPage
+                .getContent()
+                .stream()
+                .map(ProdutosResponseDTO::new)
+                .toList();
+
+        return ResponseEntity.ok(produtosDTO);
     }
 }

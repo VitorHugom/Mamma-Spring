@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>lite-erp</artifactId>
+	<artifactId>mamma-erp</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>lite-erp</name>
+	<name>mamma-erp</name>
 	<description>Um projeto de ERP basico para pequenas empresas</description>
 	<url/>
 	<licenses>
