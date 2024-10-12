@@ -4,6 +4,7 @@ import com.example.mamma_erp.entities.itens_pedido.ItensPedido;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRepository;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class ItensPedidoService {
 
     // Listar todos os itens de um pedido específico
     public List<ItensPedido> listarItensPorPedido(Long idPedido) {
-        return itensPedidoRepository.findAll().stream()
+        return itensPedidoRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
                 .filter(item -> item.getIdPedido().equals(idPedido))
                 .toList();
     }

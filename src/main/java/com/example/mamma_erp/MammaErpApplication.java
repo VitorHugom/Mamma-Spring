@@ -9,5 +9,4 @@ public class MammaErpApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(MammaErpApplication.class, args);
 	}
-
 }

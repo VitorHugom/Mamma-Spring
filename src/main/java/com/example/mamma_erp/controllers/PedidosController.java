@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -58,6 +59,25 @@ public class PedidosController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    // Endpoint para buscar todos os pedidos em status "aguardando"
+    @GetMapping("/aguardando")
+    public ResponseEntity<List<Pedidos>> getPedidosAguardando() {
+        List<Pedidos> pedidos = pedidosService.getPedidosAguardando();
+        return ResponseEntity.ok(pedidos);
+    }
+
+    // Endpoint para buscar pedidos organizados por data de entrega e período
+    // Endpoint para buscar pedidos por mês
+    @GetMapping("/agenda/{ano}/{mes}")
+    public ResponseEntity<Map<String, Map<String, List<Pedidos>>>> getPedidosPorMes(
+            @PathVariable int ano,
+            @PathVariable int mes,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Map<String, Map<String, List<Pedidos>>> pedidosOrganizados = pedidosService.getPedidosPorMes(ano, mes, page, size);
+        return ResponseEntity.ok(pedidosOrganizados);
     }
 
     // Métodos para itens de pedido

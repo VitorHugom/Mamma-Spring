@@ -12,11 +12,18 @@ import com.example.mamma_erp.entities.periodos_entrega.PeriodosEntrega;
 import com.example.mamma_erp.entities.tipos_cobranca.TiposCobranca;
 import com.example.mamma_erp.entities.vendedores.VendedoresRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class PedidosService {
@@ -38,7 +45,7 @@ public class PedidosService {
 
     // Método para listar todos os pedidos
     public List<Pedidos> listarTodos() {
-        return pedidosRepository.findAll();
+        return pedidosRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
     }
 
     // Método para buscar um pedido pelo ID
@@ -103,6 +110,30 @@ public class PedidosService {
 
             return pedidosRepository.save(pedido);
         });
+    }
+
+    public List<Pedidos> getPedidosAguardando() {
+        return pedidosRepository.findByStatus("aguardando");
+    }
+
+    // Busca pedidos por mês
+    public Map<String, Map<String, List<Pedidos>>> getPedidosPorMes(int ano, int mes, int page, int size) {
+        YearMonth yearMonth = YearMonth.of(ano, mes);
+        LocalDate startDate = yearMonth.atDay(1);
+        LocalDate endDate = yearMonth.atEndOfMonth();
+
+        Page<Pedidos> pedidosPage = pedidosRepository.findByStatusAndDataEntregaBetween(
+                "aguardando", startDate, endDate, PageRequest.of(page, size)
+        );
+
+        // Organiza os pedidos por data de entrega e período
+        return pedidosPage.getContent().stream()
+                .collect(Collectors.groupingBy(
+                        pedido -> pedido.getDataEntrega().toString(),
+                        Collectors.groupingBy(
+                                pedido -> pedido.getPeriodoEntrega().getDescricao()
+                        )
+                ));
     }
 
     // Método para deletar um pedido
