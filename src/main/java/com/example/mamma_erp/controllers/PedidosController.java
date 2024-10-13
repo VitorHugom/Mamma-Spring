@@ -4,6 +4,7 @@ import com.example.mamma_erp.entities.itens_pedido.ItensPedido;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRequestDTO;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoResponseDTO;
 import com.example.mamma_erp.entities.pedidos.Pedidos;
+import com.example.mamma_erp.entities.pedidos.PedidosAtualizarStatusRequestDTO;
 import com.example.mamma_erp.entities.pedidos.PedidosRequestDTO;
 import com.example.mamma_erp.entities.pedidos.PedidosResponseDTO;
 import com.example.mamma_erp.services.PedidosService;
@@ -68,6 +69,13 @@ public class PedidosController {
         return ResponseEntity.ok(pedidos);
     }
 
+    // Endpoint para buscar todos os pedidos em produção
+    @GetMapping("/em-producao")
+    public ResponseEntity<List<Pedidos>> getPedidosEmProducao() {
+        List<Pedidos> pedidos = pedidosService.getPedidosEmProducao();
+        return ResponseEntity.ok(pedidos);
+    }
+
     // Endpoint para buscar pedidos organizados por data de entrega e período
     // Endpoint para buscar pedidos por mês
     @GetMapping("/agenda/{ano}/{mes}")
@@ -78,6 +86,14 @@ public class PedidosController {
             @RequestParam(defaultValue = "10") int size) {
         Map<String, Map<String, List<Pedidos>>> pedidosOrganizados = pedidosService.getPedidosPorMes(ano, mes, page, size);
         return ResponseEntity.ok(pedidosOrganizados);
+    }
+
+    // Endpoint para atualizar o status de um pedido
+    @PutMapping("/{id}/status")
+    public ResponseEntity<PedidosResponseDTO> atualizarStatus(@PathVariable Long id, @RequestBody PedidosAtualizarStatusRequestDTO dto) {
+        Optional<Pedidos> pedidoAtualizado = pedidosService.atualizarStatus(id, dto.status());
+        return pedidoAtualizado.map(value -> ResponseEntity.ok(new PedidosResponseDTO(value)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     // Métodos para itens de pedido

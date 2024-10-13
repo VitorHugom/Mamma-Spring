@@ -136,6 +136,16 @@ public class PedidosService {
                 ));
     }
 
+    // Método para buscar pedidos em produção
+    public List<Pedidos> getPedidosEmProducao() {
+        return pedidosRepository.findByStatus("em_producao");
+    }
+
+    // Método para buscar pedidos em produção por data de entrega paginado
+    public Page<Pedidos> getPedidosEmProducaoPaginados(LocalDate startDate, LocalDate endDate, int page, int size) {
+        return pedidosRepository.findByStatusAndDataEntregaBetween("em_producao", startDate, endDate, PageRequest.of(page, size));
+    }
+
     // Método para deletar um pedido
     public boolean deletarPedido(Long id) {
         if (pedidosRepository.existsById(id)) {
@@ -143,6 +153,15 @@ public class PedidosService {
             return true;
         }
         return false;
+    }
+
+    // Método para atualizar o status do pedido
+    public Optional<Pedidos> atualizarStatus(Long id, String novoStatus) {
+        return pedidosRepository.findById(id).map(pedido -> {
+            pedido.setStatus(novoStatus);
+            pedido.setUltimaAtualizacao(LocalDateTime.now());  // Atualiza a data de última atualização
+            return pedidosRepository.save(pedido);  // Salva o pedido com o novo status
+        });
     }
 }
 
