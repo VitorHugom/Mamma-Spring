@@ -2,6 +2,7 @@ package com.example.mamma_erp.services;
 
 import com.example.mamma_erp.entities.clientes.ClientesRepository;
 import com.example.mamma_erp.entities.pedidos.Pedidos;
+import com.example.mamma_erp.entities.pedidos.PedidosBuscaResponseDTO;
 import com.example.mamma_erp.entities.pedidos.PedidosRepository;
 import com.example.mamma_erp.entities.pedidos.PedidosRequestDTO;
 import com.example.mamma_erp.entities.clientes.Clientes;
@@ -14,6 +15,7 @@ import com.example.mamma_erp.entities.vendedores.VendedoresRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
@@ -51,6 +53,18 @@ public class PedidosService {
     // Método para buscar um pedido pelo ID
     public Optional<Pedidos> buscarPorId(Long id) {
         return pedidosRepository.findById(id);
+    }
+
+    public Optional<PedidosBuscaResponseDTO> simplesBuscaPorId(Long id) {
+        return pedidosRepository.findById(id)
+                .map(pedido -> new PedidosBuscaResponseDTO(
+                        pedido.getId(),
+                        pedido.getCliente().getRazaoSocial(),
+                        pedido.getVendedor().getNome(),
+                        pedido.getDataEmissao(),
+                        pedido.getDataEntrega(),
+                        pedido.getStatus()
+                ));
     }
 
     // Método para criar um novo pedido
@@ -162,6 +176,14 @@ public class PedidosService {
             pedido.setUltimaAtualizacao(LocalDateTime.now());  // Atualiza a data de última atualização
             return pedidosRepository.save(pedido);  // Salva o pedido com o novo status
         });
+    }
+
+    public Page<PedidosBuscaResponseDTO> buscarPedidos(Pageable pageable) {
+        return pedidosRepository.findPedidosForBusca(pageable);
+    }
+
+    public Page<PedidosBuscaResponseDTO> buscarPedidosPorRazaoSocial(String razaoSocial, Pageable pageable) {
+        return pedidosRepository.findPedidosForBuscaByClienteRazaoSocial(razaoSocial + "%", pageable);
     }
 }
 

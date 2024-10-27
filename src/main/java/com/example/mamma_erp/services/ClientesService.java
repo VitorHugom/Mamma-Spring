@@ -1,6 +1,7 @@
 package com.example.mamma_erp.services;
 
 import com.example.mamma_erp.entities.clientes.Clientes;
+import com.example.mamma_erp.entities.clientes.ClientesBuscaResponseDTO;
 import com.example.mamma_erp.entities.clientes.ClientesRepository;
 import com.example.mamma_erp.entities.clientes.ClientesRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,15 @@ public class ClientesService {
 
     public Optional<Clientes> buscarPorId(Long id) {
         return clientesRepository.findById(id);
+    }
+
+    public Optional<ClientesBuscaResponseDTO> simplesBuscaPorId(Long id) {
+        return clientesRepository.findById(id)
+                .map(cliente -> new ClientesBuscaResponseDTO(
+                        cliente.getId(),
+                        cliente.getRazaoSocial(),
+                        cliente.getVendedor().getNome()
+                ));
     }
 
     public Clientes criarCliente(ClientesRequestDTO dto) {
@@ -100,5 +110,13 @@ public class ClientesService {
     // Busca paginada por nome
     public Page<Clientes> findByNomeContainingIgnoreCase(String nome, Pageable pageable) {
         return clientesRepository.findByRazaoSocialContainingIgnoreCase(nome, pageable);
+    }
+
+    public Page<ClientesBuscaResponseDTO> buscarClientes(Pageable pageable) {
+        return clientesRepository.findPedidosForBusca(pageable);
+    }
+
+    public Page<ClientesBuscaResponseDTO> buscarClientesPorRazaoSocial(String razaoSocial, Pageable pageable) {
+        return clientesRepository.findPedidosForBuscaByClienteRazaoSocial(razaoSocial + "%", pageable);
     }
 }

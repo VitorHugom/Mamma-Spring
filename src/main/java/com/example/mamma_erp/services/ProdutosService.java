@@ -1,6 +1,7 @@
 package com.example.mamma_erp.services;
 
 import com.example.mamma_erp.entities.produtos.Produtos;
+import com.example.mamma_erp.entities.produtos.ProdutosBuscaResponseDTO;
 import com.example.mamma_erp.entities.produtos.ProdutosRepository;
 import com.example.mamma_erp.entities.produtos.ProdutosRequestDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,15 @@ public class ProdutosService {
 
     public Optional<Produtos> buscarPorId(Long id) {
         return produtosRepository.findById(id);
+    }
+
+    public Optional<ProdutosBuscaResponseDTO> simplesBuscaPorId(Long id) {
+        return produtosRepository.findById(id)
+                .map(produto -> new ProdutosBuscaResponseDTO(
+                        produto.getId(),
+                        produto.getDescricao(),
+                        produto.getPrecoVenda()
+                ));
     }
 
     public Produtos criarProduto(ProdutosRequestDTO dto) {
@@ -74,5 +84,13 @@ public class ProdutosService {
     // Listar todos com paginação
     public Page<Produtos> listarTodosPaginado(Pageable pageable) {
         return produtosRepository.findAll(pageable);
+    }
+
+    public Page<ProdutosBuscaResponseDTO> buscarProdutos(Pageable pageable) {
+        return produtosRepository.findProdutosForBusca(pageable);
+    }
+
+    public Page<ProdutosBuscaResponseDTO> buscarProdutosPorDescricao(String descricao, Pageable pageable) {
+        return produtosRepository.findProdutosForBuscaByDescricao(descricao + "%", pageable);
     }
 }

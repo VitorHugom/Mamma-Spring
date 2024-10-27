@@ -5,6 +5,9 @@ import com.example.mamma_erp.entities.periodos_entrega.PeriodosEntregaRepository
 import com.example.mamma_erp.entities.periodos_entrega.PeriodosEntregaRequestDTO;
 import com.example.mamma_erp.entities.periodos_entrega.PeriodosEntregaResponseDTO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +33,25 @@ public class PeriodosEntregaController {
         Optional<PeriodosEntrega> periodo = periodosEntregaRepository.findById(id);
         return periodo.map(value -> ResponseEntity.ok(new PeriodosEntregaResponseDTO(value)))
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Busca todos os grupos de produtos com paginação
+    @GetMapping("/busca")
+    public Page<PeriodosEntregaResponseDTO> findAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return periodosEntregaRepository.findAll(pageable).map(PeriodosEntregaResponseDTO::new);
+    }
+
+    // Busca paginada por nome (contém, ignorando maiúsculas e minúsculas)
+    @GetMapping("/busca-por-descricao")
+    public Page<PeriodosEntregaResponseDTO> findByDescricaoContainingIgnoreCase(
+            @RequestParam String nome,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return periodosEntregaRepository.findByDescricaoContainingIgnoreCase(nome, pageable);
     }
 
     @PostMapping
