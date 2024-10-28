@@ -15,7 +15,7 @@ public interface ClientesRepository extends JpaRepository <Clientes, Long> {
             "FROM Clientes c " +
             "JOIN c.vendedor v " +
             "ORDER BY c.id DESC")
-    Page<ClientesBuscaResponseDTO> findPedidosForBusca(Pageable pageable);
+    Page<ClientesBuscaResponseDTO> findClientesForBusca(Pageable pageable);
 
     @Query("SELECT new com.example.mamma_erp.entities.clientes.ClientesBuscaResponseDTO(" +
             "c.id, c.razaoSocial, v.nome) " +
@@ -23,5 +23,5 @@ public interface ClientesRepository extends JpaRepository <Clientes, Long> {
             "JOIN c.vendedor v " +
             "WHERE LOWER(c.razaoSocial) LIKE LOWER(:razaoSocial) " +
             "ORDER BY c.id DESC")
-    Page<ClientesBuscaResponseDTO> findPedidosForBuscaByClienteRazaoSocial(@Param("razaoSocial") String razaoSocial, Pageable pageable);
+    Page<ClientesBuscaResponseDTO> findClientesForBuscaByRazaoSocial(@Param("razaoSocial") String razaoSocial, Pageable pageable);
 }

@@ -113,10 +113,10 @@ public class ClientesService {
     }
 
     public Page<ClientesBuscaResponseDTO> buscarClientes(Pageable pageable) {
-        return clientesRepository.findPedidosForBusca(pageable);
+        return clientesRepository.findClientesForBusca(pageable);
     }
 
     public Page<ClientesBuscaResponseDTO> buscarClientesPorRazaoSocial(String razaoSocial, Pageable pageable) {
-        return clientesRepository.findPedidosForBuscaByClienteRazaoSocial(razaoSocial + "%", pageable);
+        return clientesRepository.findClientesForBuscaByRazaoSocial(razaoSocial + "%", pageable);
     }
 }
