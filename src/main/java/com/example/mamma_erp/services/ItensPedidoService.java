@@ -3,6 +3,8 @@ package com.example.mamma_erp.services;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedido;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRepository;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRequestDTO;
+import com.example.mamma_erp.entities.pedidos.PedidosRepository;
+import com.example.mamma_erp.entities.produtos.ProdutosRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -16,10 +18,16 @@ public class ItensPedidoService {
     @Autowired
     private ItensPedidoRepository itensPedidoRepository;
 
+    @Autowired
+    private PedidosRepository pedidosRepository;
+
+    @Autowired
+    private ProdutosRepository produtosRepository;
+
     // Listar todos os itens de um pedido específico
     public List<ItensPedido> listarItensPorPedido(Long idPedido) {
         return itensPedidoRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
-                .filter(item -> item.getIdPedido().equals(idPedido))
+                .filter(item -> item.getPedido().getId().equals(idPedido))
                 .toList();
     }
 
@@ -32,8 +40,8 @@ public class ItensPedidoService {
     public ItensPedido criarItemPedido(ItensPedidoRequestDTO dto) {
         ItensPedido itemPedido = new ItensPedido(
                 null,
-                dto.idPedido(),
-                dto.idProduto(),
+                pedidosRepository.findById(dto.idPedido()).orElseThrow(),
+                produtosRepository.findById(dto.idProduto()).orElseThrow(),
                 dto.preco(),
                 dto.quantidade()
         );
@@ -43,7 +51,7 @@ public class ItensPedidoService {
     // Atualizar item de pedido existente
     public Optional<ItensPedido> atualizarItemPedido(Long id, ItensPedidoRequestDTO dto) {
         return itensPedidoRepository.findById(id).map(item -> {
-            item.setIdProduto(dto.idProduto());
+            item.setProduto(produtosRepository.findById(dto.idProduto()).orElseThrow());
             item.setPreco(dto.preco());
             item.setQuantidade(dto.quantidade());
             return itensPedidoRepository.save(item);
