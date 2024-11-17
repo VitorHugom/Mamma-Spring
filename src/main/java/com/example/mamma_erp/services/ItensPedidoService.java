@@ -5,6 +5,7 @@ import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRepository;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRequestDTO;
 import com.example.mamma_erp.entities.pedidos.PedidosRepository;
 import com.example.mamma_erp.entities.produtos.ProdutosRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,9 @@ public class ItensPedidoService {
     @Autowired
     private ProdutosRepository produtosRepository;
 
+    @Autowired
+    private MovimentoEstoqueService movimentoEstoqueService;
+
     // Listar todos os itens de um pedido específico
     public List<ItensPedido> listarItensPorPedido(Long idPedido) {
         return itensPedidoRepository.findAll(Sort.by(Sort.Direction.ASC, "id")).stream()
@@ -37,30 +41,52 @@ public class ItensPedidoService {
     }
 
     // Criar novo item de pedido
+    @Transactional
     public ItensPedido criarItemPedido(ItensPedidoRequestDTO dto) {
         ItensPedido itemPedido = new ItensPedido(
                 null,
-                pedidosRepository.findById(dto.idPedido()).orElseThrow(),
-                produtosRepository.findById(dto.idProduto()).orElseThrow(),
+                pedidosRepository.findById(dto.idPedido()).orElseThrow(() -> new RuntimeException("Pedido não encontrado")),
+                produtosRepository.findById(dto.idProduto()).orElseThrow(() -> new RuntimeException("Produto não encontrado")),
                 dto.preco(),
                 dto.quantidade()
         );
-        return itensPedidoRepository.save(itemPedido);
+
+        ItensPedido savedItem = itensPedidoRepository.save(itemPedido);
+        movimentoEstoqueService.registrarMovimentoPorPedido(savedItem);
+        return savedItem;
     }
 
     // Atualizar item de pedido existente
+    @Transactional
     public Optional<ItensPedido> atualizarItemPedido(Long id, ItensPedidoRequestDTO dto) {
         return itensPedidoRepository.findById(id).map(item -> {
-            item.setProduto(produtosRepository.findById(dto.idProduto()).orElseThrow());
+            // Reverter o movimento de estoque do item atual
+            movimentoEstoqueService.reverterMovimentoPorPedido(item);
+
+            // Atualizar os dados do item
+            item.setProduto(produtosRepository.findById(dto.idProduto()).orElseThrow(() -> new RuntimeException("Produto não encontrado")));
             item.setPreco(dto.preco());
             item.setQuantidade(dto.quantidade());
-            return itensPedidoRepository.save(item);
+
+            ItensPedido updatedItem = itensPedidoRepository.save(item);
+
+            // Registrar o novo movimento de estoque
+            movimentoEstoqueService.registrarMovimentoPorPedido(updatedItem);
+
+            return updatedItem;
         });
     }
 
     // Deletar item de pedido
+    @Transactional
     public boolean deletarItemPedido(Long id) {
-        if (itensPedidoRepository.existsById(id)) {
+        Optional<ItensPedido> itemOptional = itensPedidoRepository.findById(id);
+        if (itemOptional.isPresent()) {
+            ItensPedido item = itemOptional.get();
+
+            // Reverter o movimento de estoque antes de deletar o item
+            movimentoEstoqueService.reverterMovimentoPorPedido(item);
+
             itensPedidoRepository.deleteById(id);
             return true;
         }

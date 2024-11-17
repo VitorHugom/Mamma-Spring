@@ -4,6 +4,8 @@ import com.example.mamma_erp.entities.estoque.*;
 import com.example.mamma_erp.entities.produtos.Produtos;
 import com.example.mamma_erp.entities.produtos.ProdutosRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,16 @@ public class EstoqueService {
         estoqueRepository.save(estoque);
 
         return new EstoqueResponseDTO(estoque);
+    }
+
+    // Método para buscar todos os produtos no estoque paginados
+    public Page<EstoqueResponseDTO> buscarTodosProdutosNoEstoque(Pageable pageable) {
+        return estoqueRepository.findAllEstoque(pageable).map(EstoqueResponseDTO::new);
+    }
+
+    // Método para buscar produtos no estoque pela descrição
+    public Page<EstoqueResponseDTO> buscarProdutosNoEstoquePorDescricao(String descricao, Pageable pageable) {
+        return estoqueRepository.findByProdutoDescricaoContainingIgnoreCase(descricao, pageable).map(EstoqueResponseDTO::new);
     }
 
     public EstoqueResponseDTO obterEstoquePorProduto(Long idProduto) {

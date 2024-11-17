@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,8 +30,14 @@ public class RecebimentoMercadoriasService {
     @Autowired
     private ProdutosRepository produtosRepository;
 
-    public List<RecebimentoMercadoriasResponseDTO> listarTodos(){
-        return recebimentoMercadoriasRepository.findAll().stream().map(RecebimentoMercadoriasResponseDTO::new).collect(Collectors.toList());
+    @Autowired
+    private MovimentoEstoqueService movimentoEstoqueService;
+
+    public List<RecebimentoMercadoriasResponseDTO> listarTodos() {
+        return recebimentoMercadoriasRepository.findAll()
+                .stream()
+                .map(RecebimentoMercadoriasResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     public Optional<RecebimentoMercadorias> buscarPorId(Integer id) {
@@ -42,12 +49,14 @@ public class RecebimentoMercadoriasService {
                 .map(RecebimentoMercadoriasBuscaResponseDTO::new);
     }
 
+    @Transactional
     public RecebimentoMercadorias criarRecebimento(RecebimentoMercadoriasRequestDTO dto) {
         RecebimentoMercadorias recebimento = new RecebimentoMercadorias();
         recebimento.setFornecedor(fornecedoresRepository.findById(dto.idFornecedor()).orElseThrow());
         recebimento.setTipoCobranca(tiposCobrancaRepository.findById(dto.idTipoCobranca()).orElseThrow());
         recebimento.setDataRecebimento(dto.dataRecebimento());
 
+        // Criar e associar os itens ao recebimento
         dto.itens().forEach(itemDto -> {
             ItensRecebimentoMercadorias item = new ItensRecebimentoMercadorias();
             item.setProduto(produtosRepository.findById(itemDto.idProduto()).orElseThrow());
@@ -57,9 +66,16 @@ public class RecebimentoMercadoriasService {
             recebimento.getItens().add(item);
         });
 
-        return recebimentoMercadoriasRepository.save(recebimento);
+        // Salvar recebimento e seus itens
+        RecebimentoMercadorias recebimentoSalvo = recebimentoMercadoriasRepository.save(recebimento);
+
+        // Após salvar, registrar movimentos de estoque
+        recebimentoSalvo.getItens().forEach(movimentoEstoqueService::registrarMovimentoPorRecebimento);
+
+        return recebimentoSalvo;
     }
 
+    @Transactional
     public Optional<RecebimentoMercadorias> atualizarRecebimento(Integer id, RecebimentoMercadoriasRequestDTO dto) {
         return recebimentoMercadoriasRepository.findById(id).map(recebimento -> {
             // Atualizar dados do recebimento
@@ -67,7 +83,10 @@ public class RecebimentoMercadoriasService {
             recebimento.setTipoCobranca(tiposCobrancaRepository.findById(dto.idTipoCobranca()).orElseThrow());
             recebimento.setDataRecebimento(dto.dataRecebimento());
 
-            // Limpa a lista de itens atual, permitindo que o orphanRemoval remova itens não mais associados
+            // Reverter movimentos antigos associados aos itens removidos
+            recebimento.getItens().forEach(item ->
+                    movimentoEstoqueService.reverterMovimentoPorRecebimento(item)
+            );
             recebimento.getItens().clear();
 
             // Recria a lista de itens com os dados do DTO
@@ -76,21 +95,31 @@ public class RecebimentoMercadoriasService {
                 item.setProduto(produtosRepository.findById(itemDto.idProduto()).orElseThrow());
                 item.setQuantidade(itemDto.quantidade());
                 item.setValorUnitario(itemDto.valorUnitario());
-                item.setRecebimento(recebimento);  // Define o recebimento pai
+                item.setRecebimento(recebimento);
                 recebimento.getItens().add(item);
             });
 
-            // Salva o recebimento com a nova lista de itens
-            return recebimentoMercadoriasRepository.save(recebimento);
+            // Salvar recebimento e seus itens
+            RecebimentoMercadorias recebimentoSalvo = recebimentoMercadoriasRepository.save(recebimento);
+
+            // Registrar os novos movimentos de estoque
+            recebimentoSalvo.getItens().forEach(movimentoEstoqueService::registrarMovimentoPorRecebimento);
+
+            return recebimentoSalvo;
         });
     }
 
+    @Transactional
     public boolean deletarRecebimento(Integer id) {
-        if (recebimentoMercadoriasRepository.existsById(id)) {
-            recebimentoMercadoriasRepository.deleteById(id);
+        return recebimentoMercadoriasRepository.findById(id).map(recebimento -> {
+            // Reverter movimentos de estoque para os itens associados
+            recebimento.getItens().forEach(item ->
+                    movimentoEstoqueService.reverterMovimentoPorRecebimento(item)
+            );
+
+            recebimentoMercadoriasRepository.delete(recebimento);
             return true;
-        }
-        return false;
+        }).orElse(false);
     }
 
     public Page<RecebimentoMercadoriasBuscaResponseDTO> buscarRecebimentos(Pageable pageable) {

@@ -1,19 +1,19 @@
 package com.example.mamma_erp.services;
 
-import com.example.mamma_erp.entities.itens_pedido.ItensPedidoRepository;
-import com.example.mamma_erp.entities.itens_recebimento_mercadorias.ItensRecebimentoMercadoriasRepository;
-import com.example.mamma_erp.entities.movimento_estoque.*;
+import com.example.mamma_erp.entities.estoque.EstoqueRequestDTO;
 import com.example.mamma_erp.entities.itens_pedido.ItensPedido;
 import com.example.mamma_erp.entities.itens_recebimento_mercadorias.ItensRecebimentoMercadorias;
+import com.example.mamma_erp.entities.movimento_estoque.*;
 import com.example.mamma_erp.entities.produtos.Produtos;
 import com.example.mamma_erp.entities.produtos.ProdutosRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Service
 public class MovimentoEstoqueService {
@@ -25,12 +25,8 @@ public class MovimentoEstoqueService {
     private ProdutosRepository produtosRepository;
 
     @Autowired
-    private ItensRecebimentoMercadoriasRepository itensRecebimentoMercadoriasRepository;
+    private EstoqueService estoqueService;
 
-    @Autowired
-    private ItensPedidoRepository itensPedidoRepository;
-
-    // Método para criar um movimento avulso de estoque
     @Transactional
     public MovimentoEstoqueResponseDTO criarMovimentoAvulso(MovimentoEstoqueRequestDTO dto) {
         MovimentoEstoque movimento = new MovimentoEstoque();
@@ -43,55 +39,110 @@ public class MovimentoEstoqueService {
         movimento.setQtd(dto.qtd());
         movimento.setDataMovimentacao(dto.dataMovimentacao());
 
-        // Verificar se o idItemPedido foi informado e buscar o ItensPedido
-        if (dto.idItemPedido() != null) {
-            ItensPedido itemPedido = itensPedidoRepository.findById(dto.idItemPedido())
-                    .orElseThrow(() -> new RuntimeException("Item do Pedido não encontrado"));
-            movimento.setItemPedido(itemPedido);
-        }
-
-        // Verificar se o idItemRecebimentoMercadoria foi informado e buscar o ItensRecebimentoMercadorias
-        if (dto.idItemRecebimentoMercadoria() != null) {
-            ItensRecebimentoMercadorias itemRecebimento = itensRecebimentoMercadoriasRepository.findById(dto.idItemRecebimentoMercadoria())
-                    .orElseThrow(() -> new RuntimeException("Item de Recebimento de Mercadoria não encontrado"));
-            movimento.setItemRecebimentoMercadoria(itemRecebimento);
-        }
-
-        // Salvar o movimento de estoque
+        // Salvar o movimento
         movimentoEstoqueRepository.save(movimento);
+
+        // Atualizar o estoque com base no movimento
+        atualizarEstoque(produto, dto.qtd());
+
         return new MovimentoEstoqueResponseDTO(movimento);
     }
 
-    // Método para registrar movimento de estoque a partir de um item de pedido
     @Transactional
     public void registrarMovimentoPorPedido(ItensPedido itemPedido) {
         Produtos produto = buscarProduto(itemPedido.getProduto().getId());
 
+        BigDecimal quantidadeMovimento = new BigDecimal(itemPedido.getQuantidade()).negate(); // Subtrai do estoque
+
         MovimentoEstoque movimento = new MovimentoEstoque();
         movimento.setItemPedido(itemPedido);
         movimento.setProduto(produto);
-        movimento.setQtd(new BigDecimal(itemPedido.getQuantidade()).negate()); // Subtrai do estoque
+        movimento.setQtd(quantidadeMovimento);
         movimento.setDataMovimentacao(LocalDateTime.now());
 
         movimentoEstoqueRepository.save(movimento);
+
+        // Atualizar o estoque
+        atualizarEstoque(produto, quantidadeMovimento);
     }
 
-    // Método para registrar movimento de estoque a partir de um item de recebimento de mercadoria
     @Transactional
     public void registrarMovimentoPorRecebimento(ItensRecebimentoMercadorias itemRecebimento) {
+        if (itemRecebimento.getId() == null) {
+            throw new IllegalStateException("O item de recebimento precisa ser salvo antes de registrar um movimento de estoque.");
+        }
+
         Produtos produto = buscarProduto(itemRecebimento.getProduto().getId());
+
+        BigDecimal quantidadeMovimento = itemRecebimento.getQuantidade(); // Adiciona ao estoque
 
         MovimentoEstoque movimento = new MovimentoEstoque();
         movimento.setItemRecebimentoMercadoria(itemRecebimento);
         movimento.setProduto(produto);
-        movimento.setQtd(itemRecebimento.getQuantidade()); // Adiciona ao estoque
+        movimento.setQtd(quantidadeMovimento);
         movimento.setDataMovimentacao(LocalDateTime.now());
 
         movimentoEstoqueRepository.save(movimento);
+
+        // Atualizar o estoque
+        atualizarEstoque(produto, quantidadeMovimento);
+    }
+
+    @Transactional
+    public void reverterMovimentoPorPedido(ItensPedido itemPedido) {
+        Produtos produto = buscarProduto(itemPedido.getProduto().getId());
+
+        BigDecimal quantidadeMovimento = new BigDecimal(itemPedido.getQuantidade()); // Adiciona de volta ao estoque
+
+        MovimentoEstoque movimento = new MovimentoEstoque();
+        movimento.setItemPedido(itemPedido);
+        movimento.setProduto(produto);
+        movimento.setQtd(quantidadeMovimento);
+        movimento.setDataMovimentacao(LocalDateTime.now());
+
+        movimentoEstoqueRepository.save(movimento);
+
+        // Atualizar o estoque
+        atualizarEstoque(produto, quantidadeMovimento);
+    }
+
+    @Transactional
+    public void reverterMovimentoPorRecebimento(ItensRecebimentoMercadorias itemRecebimento) {
+        Produtos produto = buscarProduto(itemRecebimento.getProduto().getId());
+
+        BigDecimal quantidadeMovimento = itemRecebimento.getQuantidade().negate(); // Subtrai do estoque
+
+        MovimentoEstoque movimento = new MovimentoEstoque();
+        movimento.setItemRecebimentoMercadoria(itemRecebimento);
+        movimento.setProduto(produto);
+        movimento.setQtd(quantidadeMovimento);
+        movimento.setDataMovimentacao(LocalDateTime.now());
+
+        movimentoEstoqueRepository.save(movimento);
+
+        // Atualizar o estoque
+        atualizarEstoque(produto, quantidadeMovimento);
     }
 
     private Produtos buscarProduto(Long idProduto) {
         return produtosRepository.findById(idProduto)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado"));
+    }
+
+    private void atualizarEstoque(Produtos produto, BigDecimal quantidade) {
+        EstoqueRequestDTO estoqueRequest = new EstoqueRequestDTO(produto.getId(), quantidade);
+        estoqueService.atualizarEstoque(estoqueRequest);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MovimentoEstoqueResponseDTO> buscarMovimentoPorIntervaloDatas(LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        Page<MovimentoEstoque> movimentos = movimentoEstoqueRepository.findByDataMovimentacaoBetween(startDate, endDate, pageable);
+        return movimentos.map(MovimentoEstoqueResponseDTO::new); // Convertendo para DTO
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MovimentoEstoqueResponseDTO> buscarTodosMovimentos(Pageable pageable) {
+        Page<MovimentoEstoque> movimentos = movimentoEstoqueRepository.findAll(pageable);
+        return movimentos.map(MovimentoEstoqueResponseDTO::new); // Convertendo para DTO
     }
 }
