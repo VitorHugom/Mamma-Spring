@@ -5,5 +5,5 @@ import com.example.mamma_erp.entities.itens_recebimento_mercadorias.ItensRecebim
 import java.time.LocalDate;
 import java.util.List;
 
-public record RecebimentoMercadoriasRequestDTO(Integer idFornecedor, Long idTipoCobranca, LocalDate dataRecebimento, List<ItensRecebimentoMercadoriasRequestDTO> itens){
+public record RecebimentoMercadoriasRequestDTO(Integer idFornecedor, Long idTipoCobranca, LocalDate dataRecebimento, List<ItensRecebimentoMercadoriasRequestDTO> itens, Long idFormaPagamento){
 }
